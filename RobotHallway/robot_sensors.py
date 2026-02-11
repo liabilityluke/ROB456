@@ -24,6 +24,10 @@ class RobotSensors:
         # GUIDE: Create the variable to store the probabilities
         # YOUR CODE HERE
 
+        self.door_sensor_probabilities = {"door" : {}, "no_door" : {}}
+
+        self.gaussian = {"sigma" : 1.0}
+
         # In the GUI version, these will be called with values from the GUI after the RobotSensors instance
         #   has been created
         # Actually SET the values for the dictionaries
@@ -40,6 +44,15 @@ class RobotSensors:
         #  Reminder: You should have created the variable to hold these values in the __init__ method above
         #  Second note: all variables should be referenced with self.
         # YOUR CODE HERE
+        assert  0 <= in_prob_see_door_if_door
+        assert in_prob_see_door_if_door <= 1.0
+        assert  0 <= in_prob_see_door_if_not_door
+        assert in_prob_see_door_if_not_door <= 1.0
+
+        self.door_sensor_probabilities["door"] = {"see_door" : in_prob_see_door_if_door, "no_see_door" : 1 - in_prob_see_door_if_door}
+        self.door_sensor_probabilities["no_door"] = {"see_door" : in_prob_see_door_if_not_door, "no_see_door" : 1 - in_prob_see_door_if_not_door}
+
+
 
     def set_distance_wall_sensor_probabilities(self, sigma=0.1):
         """ Setup the wall sensor probabilities (store them in the dictionary)
@@ -49,6 +62,7 @@ class RobotSensors:
         # Kalman and particle filter assignment
         # GUIDE: Store the Gaussian (reminder, mean for location is zero)
         # YOUR CODE HERE
+        self.gaussian["sigma"] = sigma
 
     def query_door(self, robot_gt:RobotGroundTruth, world_gt:WorldGroundTruth):
         """ Query the door sensor
@@ -70,8 +84,22 @@ class RobotSensors:
         # STEP 1 - generate a random number between 0 and 1
         # STEP 2 - use the random number (and your first if statement) to determine if you should return True or False
         # Note: Step 2 is just the sample_boolean code from your probabilities assignment
-        
+
+
         # YOUR CODE HERE
+        zero_to_one = np.random.uniform()
+
+        if is_in_front_of_door :
+            if zero_to_one < self.door_sensor_probabilities["door"]["see_door"] :
+                return True
+            else :
+                return False
+        else :
+            if zero_to_one < self.door_sensor_probabilities["no_door"]["see_door"] :
+                return True
+            else :
+                return False
+
 
     def query_distance_to_wall(self, robot_gt: RobotGroundTruth):
         """ Return a distance reading (with correct noise) of the robot's location
@@ -84,6 +112,8 @@ class RobotSensors:
         # GUIDE: Return the distance to the wall (with noise)
         #  This is the Gaussian assignment from your probabilities homework
         # YOUR CODE HERE
+        noisy_amount = robot_gt.robot_loc + np.random.normal(0, self.gaussian["sigma"])
+        return noisy_amount
 
 
 def test_discrete_sensors(b_print=True):

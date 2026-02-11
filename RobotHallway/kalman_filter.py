@@ -15,6 +15,7 @@ from robot_ground_truth import RobotGroundTruth
 class KalmanFilter:
     def __init__(self):
         # GUIDE: Store the Gaussian representing the location
+        self.gaussian = {"sigma" : 0.0, "mu" : 0.5}
 
         # YOUR CODE HERE
 
@@ -25,20 +26,25 @@ class KalmanFilter:
         @return mean : float"""
         # GUIDE Return your stored mu value for the Gaussian
         # YOUR CODE HERE
+        return self.gaussian["mu"]
     
     def location_sigma(self):
         """ Return the sigma of the Gaussian
         @return sigma : float"""
         # GUIDE Return your stored sigma value for the Gaussian
         # YOUR CODE HERE
+        return self.gaussian["sigma"]
     
     # Put robot in the middle with a really broad standard deviation
     def reset_kalman(self, loc: float = 0.5, sigma: float = 0.4):
         """ Reset location back to the middle of the hallway
         @param loc - the location in the unit interval
-        @param signma - the sigma value for the Gaussian"""
+        @param sigma - the sigma value for the Gaussian"""
         # GUIDE: Reset the location to the middle of the unit interval with a big sigma
         # YOUR CODE HERE
+        self.gaussian["sigma"] = sigma
+        self.gaussian["mu"] = loc
+
 
     # Sensor reading, distance to wall
     def update_belief_distance_sensor(self, robot_sensors: RobotSensors, dist_reading:float):
@@ -50,6 +56,11 @@ class KalmanFilter:
 
         # GUIDE: Calculate C and K, then update the Gaussian
         # YOUR CODE HERE
+        c = 1.0
+        k = self.gaussian["sigma"]*c/(c*self.gaussian["sigma"]*c + robot_sensors.gaussian["sigma"])
+        self.gaussian["mu"] = self.gaussian["mu"] + k*(dist_reading - c*self.gaussian["mu"])
+        self.gaussian["sigma"] = (1 - k*c)*self.gaussian["sigma"]
+
 
     # Given a movement, update Gaussian
     def update_continuous_move(self, 
@@ -63,6 +74,10 @@ class KalmanFilter:
 
         # GUIDE: Update mu and sigma by Ax + Bu equation
         # YOUR CODE HERE
+        a = 1.0
+        b = 1.0
+        self.gaussian["mu"] = a*self.gaussian["mu"] + b*amount
+        self.gaussian["sigma"] = a*self.gaussian["sigma"]*a + robot_ground_truth.move_probabilities["move_continuous"]["sigma"]
 
     def one_full_update(self, robot_ground_truth, robot_sensor, u: float, z: float):
         """This is the full update loop that takes in one action, followed by a sensor reading
@@ -79,6 +94,9 @@ class KalmanFilter:
         #  Step 1 predict: update your belief by the action (move the Gaussian)
         #  Step 2 correct: do the correction step (move the Gaussian to be between the current mean and the sensor reading)
         # YOUR CODE HERE
+        self.update_continuous_move(robot_ground_truth, u)
+        self.update_belief_distance_sensor(robot_sensor, z)
+
 
 
 if __name__ == '__main__':
