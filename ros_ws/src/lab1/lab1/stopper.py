@@ -38,6 +38,7 @@ class MyStopper(Node):
 		self.sub = self.create_subscription(LaserScan, 'base_scan', self.callback, 10)
 
 		# GUIDE: Any variables that you want to add can go here
+		self.robot_width = 0.38
 
 	def callback(self, scan):
 		# Every time we get a laser scan, calculate the shortest scan distance in front
@@ -54,28 +55,38 @@ class MyStopper(Node):
 		angle_max = scan.angle_max
 		num_readings = len(scan.ranges)
 
-		# GUIDE
-		# Use angle min, max, and number of readings to calculate the theta value for each scan
-		# This should be a numpy array of length num_readings, that starts at angle_min and ends at angle_max
-  # YOUR CODE HERE
+		angles = np.linspace(angle_min, angle_max, num_readings)
 
-		# GUIDE: Determine what the closest obstacle/reading is for scans in front of the robot
-		#  Step 1: Determine which of the range readings correspond to being "in front of" the robot (see comment at top)
-		#    Remember that robot scans are in the robot's coordinate system - theta = 0 means straight ahead
-		#  Step 2: Get the minimum distance to the closest object (use only scans "in front of" the robot)
-		#  Step 3: Use the closest distance from above to decide when to stop
-		#  Step 4: Scale how fast you move by the distance to the closet object (tanh is handy here...)
-		#  Step 5: Make sure to actually stop if close to 1 m
-		# Finally, set t.linear.x to be your desired speed (0 if stop)
-		# Suggestion: Do this with a for loop before being fancy with numpy (which is substantially faster)
-		# DO NOT hard-wire in the number of readings, or the min/max angle. You CAN hardwire in the size of the robot
+		width = self.robot_width
 
-		# Create a twist and fill in all the fields (you will only set t.linear.x).
+		xs = np.zeros(num_readings)
+		ys = np.zeros(num_readings)
+		xs_in_front = []
+		ys_in_front = []
+		for i in range(num_readings) :
+			xs[i] = scan.ranges[i] * np.cos(angles[i])
+			ys[i] = scan.ranges[i] * np.sin(angles[i])
+			if abs(ys[i]) < width/2 :
+				xs_in_front.append(xs[i])
+				ys_in_front.append(ys[i])
+		
+		xs_in_front = np.array(xs_in_front)
+		ys_in_front = np.array(ys_in_front)
+
+		closest_dist = np.min(xs_in_front)
+
 		t = TwistStamped()
 		t.header = Header()
 		t.header.frame_id = 'base_link'  # Transform is in the robot's coordinate frame
 		t.header.stamp = self.get_clock().now().to_msg()  # What time are we sending this?
-		t.twist.linear.x = 0.0
+
+		if closest_dist > 1.0:
+			t.twist.linear.x = (closest_dist - 1)
+		elif closest_dist < 1.0 :
+			t.twist.linear.x = (closest_dist - 1)
+		else :
+			t.twist.linear.x = 0
+
 		t.twist.linear.y = 0.0
 		t.twist.linear.z = 0.0
 		t.twist.angular.x = 0.0
@@ -84,12 +95,9 @@ class MyStopper(Node):
 
 		shortest = 0
 		max_speed = 0.2
-  # YOUR CODE HERE
 
-		# Send the command to the robot.
 		self.pub.publish(t)
 
-		# Print out a log message to the INFO channel to let us know it's working.
 		self.get_logger().info(f'Shortest {shortest}, speed {t.twist.linear.x}')
 
 

@@ -189,11 +189,54 @@ def dijkstra(im, robot_loc=(0, 0), goal_loc=(0, 0)):
 
         # GUIDE
         #  Step 1: Break out of the loop if current_node_ij is the goal node
+        if np.isclose(current_node[1][0], goal_loc[0], 1.0) and np.isclose(current_node[1][1], goal_loc[1], 0.01):
+            break
         #  Step 2: If this node is closed, skip it
+        if visited[current_node[1]][2] == True :
+            continue
         #  Step 3: Set the node to closed
+        visited[current_node[1]] = (visited[current_node[1]][0], visited[current_node[1]][1], True)
         #    Now do the instructions from the slide (the actual algorithm)
         #  See also lecture slides
         # YOUR CODE HERE
+        for connected_point in eight_connected(current_node[1]) :
+            connected_node = (current_node[0] + 1, connected_point) #make connected point into a node
+            heapq.heappush(priority_queue, connected_node) #add the node to the heap
+
+            if visited[connected_node[1]] == None :
+                visited[connected_node[1]] = (connected_node[0], current_node, False)
+            else :
+                if visited[connected_node[1]][0] > connected_node[0] :
+                    visited[connected_node[1]] = (connected_node[0], current_node, False) #replace the node with the shorter path if its shorter (maybe I shouldn't just keep it open?)
+    
+    if visited[goal_loc] == None :
+        print("couldn't find goal!")
+        return 0
+    else :
+        return_path = [goal_loc]
+        while True :
+            parent = visited[return_path[-1]][1]
+
+            if parent != None :
+                return_path.append(parent[1])
+            else :
+                break
+        return_path.reverse()
+
+        return return_path
+
+                
+
+
+
+
+
+
+
+
+
+
+
 
     # Now check that we actually found the goal node
     if not goal_loc in visited:
