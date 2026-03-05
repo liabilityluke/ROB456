@@ -174,6 +174,7 @@ def dijkstra(im, robot_loc=(0, 0), goal_loc=(0, 0)):
 
     # While the list is not empty 
     # Use a break statement to end the while loop if you encounter the goal node before the queue empties
+
     while priority_queue:
         # Get the current best node off of the list (pop the node off the queue)
         current_node = heapq.heappop(priority_queue)
@@ -189,7 +190,7 @@ def dijkstra(im, robot_loc=(0, 0), goal_loc=(0, 0)):
 
         # GUIDE
         #  Step 1: Break out of the loop if current_node_ij is the goal node
-        if np.isclose(current_node[1][0], goal_loc[0], 1.0) and np.isclose(current_node[1][1], goal_loc[1], 0.01):
+        if np.isclose(current_node[1][0], goal_loc[0], .01) and np.isclose(current_node[1][1], goal_loc[1], .01):
             break
         #  Step 2: If this node is closed, skip it
         if visited[current_node[1]][2] == True :
@@ -199,60 +200,42 @@ def dijkstra(im, robot_loc=(0, 0), goal_loc=(0, 0)):
         #    Now do the instructions from the slide (the actual algorithm)
         #  See also lecture slides
         # YOUR CODE HERE
-        for connected_point in eight_connected(current_node[1]) :
-            connected_node = (current_node[0] + 1, connected_point) #make connected point into a node
-            heapq.heappush(priority_queue, connected_node) #add the node to the heap
+        for connected_point in four_connected(current_node[1]) :
+            if is_free(im, connected_point) :
+                connected_node = (current_node[0] + 1, connected_point) #make connected point into a node
 
-            if visited[connected_node[1]] == None :
-                visited[connected_node[1]] = (connected_node[0], current_node, False)
-            else :
-                if visited[connected_node[1]][0] > connected_node[0] :
-                    visited[connected_node[1]] = (connected_node[0], current_node, False) #replace the node with the shorter path if its shorter (maybe I shouldn't just keep it open?)
+
+                heapq.heappush(priority_queue, connected_node) #add the node to the heap
+
+                if visited.get(connected_node[1]) == None :
+                    visited[connected_node[1]] = (connected_node[0], current_node, False)
+                else :
+                    if visited[connected_node[1]][0] > connected_node[0] :
+                        visited[connected_node[1]] = (connected_node[0], current_node, False) #replace the node with the shorter path if its shorter (maybe I shouldn't just keep it open?)
     
-    if visited[goal_loc] == None :
-        print("couldn't find goal!")
-        return 0
+    return_path = []
+    if visited.get(goal_loc) != None :
+        return_path = [visited[goal_loc][1][1]]
     else :
-        return_path = [goal_loc]
-        while True :
-            parent = visited[return_path[-1]][1]
+        #get closest reached point
+        closest = (0, 0)
+        closest_dist = 100000000000
+        for loc in visited.keys() :
+            dist = abs(goal_loc[0] - loc[0]) + abs(goal_loc[1] - loc[1])
+            if dist < closest_dist :
+                closest = loc
+                closest_dist = dist
+        return_path = [visited[closest][1][1]]
 
-            if parent != None :
-                return_path.append(parent[1])
-            else :
-                break
-        return_path.reverse()
-
-        return return_path
-
-                
-
-
-
-
-
-
-
-
-
-
-
-
-    # Now check that we actually found the goal node
-    if not goal_loc in visited:
-        print(f"Goal {goal_loc} not reached, taking closest")
-
-        # GUIDE: Deal with not being able to get to the goal loc
-        #   If the goal location is not reachable, find the node closest to the goal 
-        #.  and return the path to it - you'll want this for the ROS 2 assignment
-        # YOUR CODE HERE
-
-    path = []
-    path.append(goal_loc)
-    # GUIDE: Build the path by starting at the goal node and working backwards
-    # YOUR CODE HERE
-
-    return path
+    while True :
+        parent = visited[return_path[-1]][1]
+        if parent != None :
+            return_path.append(parent[1])
+        else :
+            break
+    return_path.reverse()
+    return return_path
+    
 
 
 def open_image(im_name):
@@ -271,7 +254,7 @@ def open_image(im_name):
               "Assignments/Data/" + im_name, 
               "Skills/Data/" + im_name,
               "../../../../Skills/Data/" + im_name,
-              "../../../../Assignments/Data" + im_name,
+              "../../../../Assignments/Data/" + im_name,
               ]
     im = None
     print(f"{os.getcwd()}")
@@ -345,27 +328,39 @@ if __name__ == '__main__':
     _, im_thresh = open_image("map.pgm")
     zoom = 1.0
 
+    print("1")
     robot_goal_loc = robot_goal_loc_close
     path = dijkstra(im_thresh, robot_start_loc, robot_goal_loc)
     plot_with_path(im_thresh, zoom=zoom, robot_loc=robot_start_loc, goal_loc=robot_goal_loc, path=path)
 
+    print("2")
+
     path_straight = dijkstra(im_thresh, robot_loc=(40, 60), goal_loc=robot_goal_loc_close)
     assert check_path_continuous(im_thresh, path_straight, 41, 21)
+
+    print("3")
 
     path_hallway = dijkstra(im_thresh, robot_loc=(40, 60), goal_loc=robot_goal_hallway)
     assert check_path_continuous(im_thresh, path_hallway, 156, 116)
 
+    print("4")
+
     path_next_room = dijkstra(im_thresh, robot_loc=(40, 60), goal_loc=robot_goal_next_room)
     assert check_path_continuous(im_thresh, path_next_room, 315, 241)
+
+    print("5")
 
     # This one will be SLOW
     path_not_reachable = dijkstra(im_thresh, robot_loc=(40, 60), goal_loc=loc_not_reachable)
     assert len(path_not_reachable) > 20
+
+    print("6")
 
     # Depending on if your mac, windows, linux, and if interactive is true, you may need to call this to get the plt
     # windows to show
     # Putting this in here to avoid messing up ROS
     import matplotlib.pyplot as plt
     plt.show()
-
+    plot_with_path(im_thresh, zoom=zoom, robot_loc=robot_start_loc, goal_loc=robot_goal_loc, path=path_next_room)
+    plt.show()
     print("Done")
