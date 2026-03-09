@@ -204,7 +204,6 @@ def dijkstra(im, robot_loc=(0, 0), goal_loc=(0, 0)):
             if is_free(im, connected_point) :
                 connected_node = (current_node[0] + 1, connected_point) #make connected point into a node
 
-
                 heapq.heappush(priority_queue, connected_node) #add the node to the heap
 
                 if visited.get(connected_node[1]) == None :
