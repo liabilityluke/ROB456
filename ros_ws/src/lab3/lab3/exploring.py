@@ -98,6 +98,11 @@ def is_reachable(im, pix):
     #  False otherwise
     # You can use four or eight connected - eight will return more points
     # YOUR CODE HERE
+
+    for connected_pixel in path_planning.four_connected(pix) :
+        if connected_pixel[0] < im.shape[0] and connected_pixel[1] < im.shape[1] and connected_pixel[0] >= 0 and connected_pixel[0] >= 0 :
+            if im[connected_pixel[0], connected_pixel[1]] == 255:
+                return True
     return False
 
 
@@ -110,6 +115,25 @@ def find_all_possible_goals(im):
 
     # YOUR CODE HERE
 
+    possible_locations = {}
+
+    for row in range(im.shape[0]) :
+        for collumn in range(im.shape[1]) :
+            if is_reachable(im, (row, collumn)) :
+                possible_locations[(row, collumn)] = True
+
+    possible_locations_array = []
+
+    for location in possible_locations.keys() :
+        for connected_location in path_planning.four_connected(location) :
+            if possible_locations.get(connected_location) != None :
+                possible_locations_array.append(location)
+
+    return possible_locations_array
+                
+
+
+
 
 def find_best_point(im, possible_points : list, robot_loc):
     """ Pick one of the unseen points to go to
@@ -118,6 +142,19 @@ def find_best_point(im, possible_points : list, robot_loc):
     @param robot_loc - location of the robot (in case you want to factor that in)
     """
     # YOUR CODE HERE
+
+    closest_loc = (0, 0)
+    closest_dist = 100000000
+
+    for location in possible_points :
+        dist =  abs(robot_loc[0] - location[0]) + abs(robot_loc[1] - location[1])
+        if dist < closest_dist :
+            closest_dist = dist
+            closest_loc = location
+    
+    return closest_loc
+
+
 
 
 def find_waypoints(im, path):
@@ -129,8 +166,19 @@ def find_waypoints(im, path):
     # Again, no right answer here
     # YOUR CODE HERE
 
+    waypoints = []
+
+    for i in range(1, len(path) - 10) :
+        if i % 20 == 0 :
+            waypoints.append[path[i]]
+    
+    waypoints.append(path[-1])
+
+    return waypoints
+
 
 def test_unseen(im, pts):
+    print(pts)
     for pt in pts:
         count_free = 0
         count_unseen = 0
@@ -169,6 +217,11 @@ if __name__ == '__main__':
 
     all_unseen = find_all_possible_goals(im_thresh)
     best_unseen = find_best_point(im_thresh, all_unseen, robot_loc=robot_start_loc)
+
+    plot_with_explore_points(im_thresh, zoom=1.0, robot_loc=robot_start_loc, explore_points=all_unseen, best_pt=best_unseen)
+    import matplotlib.pyplot as plt
+    plt.show()
+
 
     assert test_unseen(im=im_thresh, pts=all_unseen)
     assert test_best(im=im_thresh, pt=best_unseen)
