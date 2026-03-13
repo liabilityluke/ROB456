@@ -98,14 +98,18 @@ def is_reachable(im, pix):
     #  False otherwise
     # You can use four or eight connected - eight will return more points
     # YOUR CODE HERE
-
+    # print(im.shape)
     for connected_pixel in path_planning.four_connected(pix) :
-        if connected_pixel[0] < im.shape[0] and connected_pixel[1] < im.shape[1] and connected_pixel[0] >= 0 and connected_pixel[0] >= 0 :
-            if im[connected_pixel[0], connected_pixel[1]] == 255:
+        if connected_pixel[0] < im.shape[1] and connected_pixel[1] < im.shape[0] and connected_pixel[0] >= 0 and connected_pixel[0] >= 0 :
+#            if im[connected_pixel[0], connected_pixel[1]] == 255:
+            # print(connected_pixel)
+            # print(connected_pixel)
+            if path_planning.is_free(im, (connected_pixel[0], connected_pixel[1])) :
                 return True
+    # print("lala")
     return False
 
-
+test_dict = {}
 def find_all_possible_goals(im):
     """ Find all of the places where you have a pixel that is unseen next to a pixel that is free
     It is probably easier to do this, THEN cull it down to some reasonable places to try
@@ -117,10 +121,11 @@ def find_all_possible_goals(im):
 
     possible_locations = {}
 
-    for row in range(im.shape[0]) :
-        for collumn in range(im.shape[1]) :
-            if is_reachable(im, (row, collumn)) :
-                possible_locations[(row, collumn)] = True
+    for row in range(im.shape[0] - 1) :
+        for collumn in range(im.shape[1] - 1) :
+            if path_planning.is_unseen(im, (collumn, row)):
+                if is_reachable(im, (collumn, row)) :
+                    possible_locations[(collumn, row)] = True
 
     possible_locations_array = []
 
@@ -128,6 +133,7 @@ def find_all_possible_goals(im):
         for connected_location in path_planning.four_connected(location) :
             if possible_locations.get(connected_location) != None :
                 possible_locations_array.append(location)
+                test_dict[location] = True
 
     return possible_locations_array
                 
@@ -143,15 +149,38 @@ def find_best_point(im, possible_points : list, robot_loc):
     """
     # YOUR CODE HERE
 
+    acceptable_points = []
+
+    for pt in possible_points :
+        count_free = 0
+        count_unseen = 0
+        for ix in range(-1, 2):
+            for iy in range(-1, 2):
+                if path_planning.is_free(im, (pt[0] + ix, pt[1] + iy)):
+                    count_free += 1
+                elif path_planning.is_unseen(im, (pt[0] + ix, pt[1] + iy)):
+                    count_unseen += 1
+        if count_free >= 3 and count_free + count_unseen == 9:
+            acceptable_points.append(pt)
+            
+
+
     closest_loc = (0, 0)
     closest_dist = 100000000
 
-    for location in possible_points :
+    for location in acceptable_points :
         dist =  abs(robot_loc[0] - location[0]) + abs(robot_loc[1] - location[1])
         if dist < closest_dist :
             closest_dist = dist
             closest_loc = location
     
+    for ix in range(-1, 2):
+        for iy in range(-1, 2):
+            if path_planning.is_free(im, (pt[0] + ix, pt[1] + iy)):
+                return (pt[0] + ix, pt[1] + iy)
+
+    print("hmmm something went wrong... returning unseen point")
+
     return closest_loc
 
 
@@ -170,7 +199,7 @@ def find_waypoints(im, path):
 
     for i in range(1, len(path) - 10) :
         if i % 20 == 0 :
-            waypoints.append[path[i]]
+            waypoints.append(path[i])
     
     waypoints.append(path[-1])
 
@@ -178,7 +207,6 @@ def find_waypoints(im, path):
 
 
 def test_unseen(im, pts):
-    print(pts)
     for pt in pts:
         count_free = 0
         count_unseen = 0
@@ -204,8 +232,10 @@ def test_best(im, pt):
             elif path_planning.is_unseen(im, (pt[0] + ix, pt[1] + iy)):
                 count_unseen += 1
     if count_free < 3:
+        print("one!")
         return False
     if count_free + count_unseen != 9:
+        print("two!")
         return False
     return True
 
@@ -218,9 +248,9 @@ if __name__ == '__main__':
     all_unseen = find_all_possible_goals(im_thresh)
     best_unseen = find_best_point(im_thresh, all_unseen, robot_loc=robot_start_loc)
 
-    plot_with_explore_points(im_thresh, zoom=1.0, robot_loc=robot_start_loc, explore_points=all_unseen, best_pt=best_unseen)
-    import matplotlib.pyplot as plt
-    plt.show()
+    # plot_with_explore_points(im_thresh, zoom=1.0, robot_loc=robot_start_loc, explore_points=all_unseen, best_pt=(0, 0))
+    # import matplotlib.pyplot as plt
+    # plt.show()
 
 
     assert test_unseen(im=im_thresh, pts=all_unseen)
