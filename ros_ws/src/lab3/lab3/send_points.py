@@ -88,7 +88,6 @@ class SendPoints(Node):
 		self.path_marker_pub = self.create_publisher(MarkerArray, 'path_points', 1)
 		self.reachable_marker_pub = self.create_publisher(MarkerArray, 'reachable_points', 1)
 
-
 	def _start_action_client(self):
 		""" This gets called by the timer whenever a new set of goals needs to be kicked off"""
 
@@ -283,6 +282,9 @@ class SendPoints(Node):
 				marker.color.a = 1.0
 
 				self.goal_markers.markers.append(marker)
+		
+		#
+		self.get_logger().info("goal markers changed!")
 
 		# Actually publish the list
 		self.goal_marker_pub.publish(self.goal_markers)
@@ -399,12 +401,8 @@ class SendPoints(Node):
 		@return pt_uv - point in the image"""
 		info = map_msg.info
 
-		im_u = 0
-		im_v = 0
-
-		# GUIDE: Subtract the origin position of the map and then divide by the resolution
-		#   Don't forget to cast to an int
-  # YOUR CODE HERE
+		im_u = int(info.width * pt_xy[0] + info.origin[0])
+		im_v = int(info.height * pt_xy[1] + info.origin[1])
 		
 		# self.get_logger().info(f"before {pt_xy} after {im_u}, {im_v}")
 		return (im_u, im_v)
@@ -416,11 +414,9 @@ class SendPoints(Node):
 		@return pt_xy - point in the world"""
 		info = map_msg.info
 
-		pt_x = 0.0
-		pt_y = 0.0
-		# GUIDE: Multiply by the resolution then add the origin position of the map 
-  # YOUR CODE HERE
-		# self.get_logger().info(f"before {pt_uv} after {pt_x}, {pt_y}")
+		pt_x = float(pt_uv[0] - info.origin[0]) / info.width
+		pt_y = float(pt_uv[1] - info.origin[1]) / info.height
+		
 		return (pt_x, pt_y)
 
 	def map_callback(self, map_msg : OccupancyGrid):
@@ -450,6 +446,7 @@ class SendPoints(Node):
 		robot_current_loc_in_image = self.from_map_to_image(map_msg=map_msg, pt_xy=robot_current_loc_in_map)
 		self.get_logger().info(f"Robot current location {robot_current_loc_in_map}")
 
+		#Lucas
 		# GUIDE: Change this to get just the points you might consider looking at and perhaps don't do it every time a map is made
 		all_unseen_pts = find_all_possible_goals(im_thresh)  # Your exploring code
 		reachable_pts = []

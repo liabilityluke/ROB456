@@ -99,14 +99,13 @@ def is_reachable(im, pix):
     # You can use four or eight connected - eight will return more points
     # YOUR CODE HERE
     # print(im.shape)
+
+    
+
     for connected_pixel in path_planning.four_connected(pix) :
         if connected_pixel[0] < im.shape[1] and connected_pixel[1] < im.shape[0] and connected_pixel[0] >= 0 and connected_pixel[0] >= 0 :
-#            if im[connected_pixel[0], connected_pixel[1]] == 255:
-            # print(connected_pixel)
-            # print(connected_pixel)
             if path_planning.is_free(im, (connected_pixel[0], connected_pixel[1])) :
                 return True
-    # print("lala")
     return False
 
 test_dict = {}
@@ -121,8 +120,10 @@ def find_all_possible_goals(im):
 
     possible_locations = {}
 
-    for row in range(im.shape[0] - 1) :
-        for collumn in range(im.shape[1] - 1) :
+    #easy win: use np functions to get just the unseen points
+
+    for row in range(im.shape[0]) :
+        for collumn in range(im.shape[1]) :
             if path_planning.is_unseen(im, (collumn, row)):
                 if is_reachable(im, (collumn, row)) :
                     possible_locations[(collumn, row)] = True
@@ -133,7 +134,8 @@ def find_all_possible_goals(im):
         for connected_location in path_planning.four_connected(location) :
             if possible_locations.get(connected_location) != None :
                 possible_locations_array.append(location)
-                test_dict[location] = True
+                break
+
 
     return possible_locations_array
                 
