@@ -48,7 +48,7 @@ from rclpy.executors import MultiThreadedExecutor
 
 
 class Lab3Driver(Node):
-	def __init__(self, threshold=0.2):
+	def __init__(self, threshold=0.3):
 		""" We have parameters this time
 		@param threshold - how close do you have to be before saying you're at the goal? Set to width of robot
 		"""
@@ -345,7 +345,7 @@ class Lab3Driver(Node):
 
 		angles = np.linspace(angle_min, angle_max, num_readings)
 
-		width = 1.0
+		width = 0.5
 
 		xs = np.zeros(num_readings)
 		ys = np.zeros(num_readings)
@@ -369,7 +369,7 @@ class Lab3Driver(Node):
 
 		closest_angle = angles[closest_index]
 
-		if closest_dist > 1.5:
+		if closest_dist > 0.25:
 			return False, closest_dist, closest_angle
 		else :
 			return True, closest_dist, closest_angle
@@ -398,21 +398,24 @@ class Lab3Driver(Node):
 		max_speed = 0.2      # This moves about 0.01 m between scans
 		max_turn = np.pi * 0.1 # This turns about 2 degrees between scans
 
-		if self.target.point.y > 0 :
-			t.twist.angular.z = min(self.target.point.y, max_turn)
-		elif self.target.point.y < 0:
-			t.twist.angular.z = -min(-self.target.point.y, max_turn)
-
 		if self.target.point.x > 0 :
 			t.twist.linear.x = max(min_speed, min(self.target.point.x, max_speed))
 		else :
-			t.twist.linear.x = -max_speed
+			t.twist.linear.x = - min_speed
+
+		if self.target.point.y > 0.1 :
+			t.twist.angular.z = min(self.target.point.y, max_turn)
+			t.twist.linear.x = min_speed
+
+		elif self.target.point.y < 0:
+			t.twist.angular.z = -min(-self.target.point.y, max_turn)
+			t.twist.linear.x = min_speed
+
 
 		object_in_front, obstacle_dist, obstacle_angle = self.get_obstacle(scan)
 
 		if object_in_front :
-			self.get_logger().info(f"Obstacle angle 2: {obstacle_angle}")
-			t.twist.linear.x = 0.1
+			t.twist.linear.x = 0.0
 			if obstacle_angle > 0 :
 				t.twist.angular.z = -max_turn
 			else :

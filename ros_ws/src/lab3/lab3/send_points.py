@@ -399,25 +399,26 @@ class SendPoints(Node):
 		@param map_msg - the map
 		@param pt_xy - a tuple with an x,y in it
 		@return pt_uv - point in the image"""
-		info = map_msg.info
 
-		im_u = int(info.width * pt_xy[0] + info.origin[0])
-		im_v = int(info.height * pt_xy[1] + info.origin[1])
+		info = map_msg.info
+		pt_u = int((pt_xy[0] - info.origin.position.x) / info.resolution)
+		pt_v = int((pt_xy[1] - info.origin.position.y) / info.resolution) 
 		
 		# self.get_logger().info(f"before {pt_xy} after {im_u}, {im_v}")
-		return (im_u, im_v)
-			
+		return (pt_u, pt_v)
+
 	def from_image_to_map(self, map_msg : OccupancyGrid, pt_uv = (0, 0)):
 		""" Convert from a point in the world to a point in the image
 		@param map_msg - the map
 		@param pt_uv - a tuple with a u,v in width/height in it
 		@return pt_xy - point in the world"""
+	
 		info = map_msg.info
 
-		pt_x = float(pt_uv[0] - info.origin[0]) / info.width
-		pt_y = float(pt_uv[1] - info.origin[1]) / info.height
+		im_x = (pt_uv[0] * info.resolution + info.origin.position.x)
+		im_y = (pt_uv[1] * info.resolution + info.origin.position.y)
 		
-		return (pt_x, pt_y)
+		return (im_x, im_y)
 
 	def map_callback(self, map_msg : OccupancyGrid):
 		""" Called when the map gets updated. Size etc of the map is in the message"""
@@ -443,6 +444,7 @@ class SendPoints(Node):
 		# Location of robot
 		transform = self.tf_buffer.lookup_transform('odom', 'base_link', rclpy.time.Time(), timeout=rclpy.duration.Duration(seconds=1.0))
 		robot_current_loc_in_map = (transform.transform.translation.x, transform.transform.translation.y)
+		
 		robot_current_loc_in_image = self.from_map_to_image(map_msg=map_msg, pt_xy=robot_current_loc_in_map)
 		self.get_logger().info(f"Robot current location {robot_current_loc_in_map}")
 
@@ -462,31 +464,39 @@ class SendPoints(Node):
 		#   If we're headed towards the last goal, get a goal from best_pt
 
 		# The final goal point in image coords
+		# self.get_logger().info(f"test test!!!: {self.from_map_to_image(map_msg=map_msg, pt_xy=self.goal_points[-1])}")
 		if len(self.goal_points) > 0:		
 			goal_loc_in_image = self.from_map_to_image(map_msg=map_msg, pt_xy=self.goal_points[-1])
+			self.get_logger().info(f"thing 1")
 		else:
 			goal_loc_in_image = (map_msg.info.width // 2, map_msg.info.height // 2)
+			self.get_logger().info(f"thing 2")
 
 		if 0 < goal_loc_in_image[0] < map_msg.info.width and 0 < goal_loc_in_image[1] < map_msg.info.height:
 			# Headed towards last goal and it is now in the free space of the robot
-			goal_loc_in_image = find_best_point(im, all_unseen_pts, robot_current_loc_in_image)  # Use your exploring code to find a good point
-			self.get_logger().info(f"Getting best {goal_loc_in_image} {is_free(im, goal_loc_in_image)}")
+			self.get_logger().info(f"my points... {all_unseen_pts}")
+			self.get_logger().info(f"my robo position... {robot_current_loc_in_image}")
+			goal_loc_in_image = find_best_point(im_thresh, all_unseen_pts, robot_current_loc_in_image)  # Use your exploring code to find a good point
+			self.get_logger().info(f"Getting best {goal_loc_in_image}")# {is_free(im, goal_loc_in_image)}")
 		else:
 			# This just looks for the last viable goal (that is free) - will grab a goal
 			#  that's already been seen
 			if self.goal_points:
 				for p in self.goal_points:
 					try_goal_loc_in_image = self.from_map_to_image(map_msg=map_msg, pt_xy=p)
-					if try_goal_loc_in_image[0] < map_msg.info.width and try_goal_loc_in_image[1] < map_msg.info.height:
+					if 0 < try_goal_loc_in_image[0] < map_msg.info.width and 0 < try_goal_loc_in_image[1] < map_msg.info.height:
 						if is_free(im_thresh, try_goal_loc_in_image):
 							goal_loc_in_image = try_goal_loc_in_image
+							self.get_logger().info(f"This thing just happened...")
 
 		# GUIDE: This calls dijkstra with the goal location and plots the path that you return in RViz
 		#  Note: If you did not fix your code to deal with an unreachable point then this will handle that case
 		#   as an exception
 		path_pts = []
 		try:
+			self.get_logger().info(f"1!!!!, {im_thresh.shape}, {robot_current_loc_in_image}, {goal_loc_in_image}")
 			path = dijkstra(im_thresh, robot_current_loc_in_image, goal_loc_in_image)
+			self.get_logger().info("2!!!!")
 			self.get_logger().info(f"Path {path}")	
 			path_waypoints = find_waypoints(im_thresh, path)
 			self.get_logger().info(f"Path waypoints {path_waypoints}")	

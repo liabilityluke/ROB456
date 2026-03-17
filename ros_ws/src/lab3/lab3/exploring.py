@@ -153,37 +153,38 @@ def find_best_point(im, possible_points : list, robot_loc):
 
     acceptable_points = []
 
+
     for pt in possible_points :
         count_free = 0
         count_unseen = 0
         for ix in range(-1, 2):
             for iy in range(-1, 2):
-                if path_planning.is_free(im, (pt[0] + ix, pt[1] + iy)):
-                    count_free += 1
-                elif path_planning.is_unseen(im, (pt[0] + ix, pt[1] + iy)):
-                    count_unseen += 1
+                if pt[0] + ix < im.shape[1] and pt[1] + iy < im.shape[0] and pt[0] + ix >= 0 and pt[1] + iy >= 0 :
+                    if path_planning.is_free(im, (pt[0] + ix, pt[1] + iy)):
+                        count_free += 1
+                    elif path_planning.is_unseen(im, (pt[0] + ix, pt[1] + iy)):
+                        count_unseen += 1
         if count_free >= 3 and count_free + count_unseen == 9:
             acceptable_points.append(pt)
-            
 
-
-    closest_loc = (0, 0)
+    closest_loc = (-1, -1)
     closest_dist = 100000000
 
     for location in acceptable_points :
         dist =  abs(robot_loc[0] - location[0]) + abs(robot_loc[1] - location[1])
-        if dist < closest_dist :
+        if 30 < dist < closest_dist :
             closest_dist = dist
             closest_loc = location
     
+
     for ix in range(-1, 2):
         for iy in range(-1, 2):
-            if path_planning.is_free(im, (pt[0] + ix, pt[1] + iy)):
-                return (pt[0] + ix, pt[1] + iy)
+            if path_planning.is_free(im, (closest_loc[0] + ix, closest_loc[1] + iy)):
+                return (closest_loc[0] + ix, closest_loc[1] + iy)
 
     print("hmmm something went wrong... returning unseen point")
 
-    return closest_loc
+    return (-3, -3)
 
 
 

@@ -214,7 +214,10 @@ def dijkstra(im, robot_loc=(0, 0), goal_loc=(0, 0)):
     
     return_path = []
     if visited.get(goal_loc) != None :
-        return_path = [visited[goal_loc][1][1]]
+        if visited.get(goal_loc)[1] != None :
+            return_path = [visited[goal_loc][1][1]]
+        else :
+            return [goal_loc]
     else :
         #get closest reached point
         closest = (0, 0)
