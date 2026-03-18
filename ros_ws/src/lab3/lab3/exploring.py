@@ -172,7 +172,7 @@ def find_best_point(im, possible_points : list, robot_loc):
 
     for location in acceptable_points :
         dist =  abs(robot_loc[0] - location[0]) + abs(robot_loc[1] - location[1])
-        if 30 < dist < closest_dist :
+        if 60 < dist < closest_dist :
             closest_dist = dist
             closest_loc = location
     

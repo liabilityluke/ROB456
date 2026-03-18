@@ -48,7 +48,7 @@ from rclpy.executors import MultiThreadedExecutor
 
 
 class Lab3Driver(Node):
-	def __init__(self, threshold=0.3):
+	def __init__(self, threshold=0.5):
 		""" We have parameters this time
 		@param threshold - how close do you have to be before saying you're at the goal? Set to width of robot
 		"""
@@ -102,6 +102,17 @@ class Lab3Driver(Node):
 
 		# GUIDE: Declare any variables here
   # YOUR CODE HERE
+		self.backup_count = 0
+		self.progress_threshold = 0.05
+		self.progress_count = 0
+		self.progress_count_max = 20
+		self.prev_dist = 1000
+
+		#initializing timer to time out if looking for point for too long
+		self.start_timer = self.create_timer(20.0, self.timer_timeout_callback)
+		#immediately canceling timer
+		self.start_timer.cancel()
+
 
 		# Timer to make sure we publish the target marker (once we get a goal)
 		self.marker_timer = self.create_timer(1.0, self._marker_callback)
@@ -109,6 +120,12 @@ class Lab3Driver(Node):
 		self.count_since_last_scan = 0
 		self.print_twist_messages = False
 		self.print_distance_messages = False
+
+	def timer_timeout_callback(self):
+		self.start_timer.cancel()
+		self.goal = None
+		#if timer times out and haven't found the point
+		#send message to send points to cancel unfound point
 
 	def zero_twist(self):
 		"""This is a helper class method to create and zero-out a twist"""
@@ -170,6 +187,7 @@ class Lab3Driver(Node):
 		self.get_logger().info("Received a goal request")
 
 		# Timer to make sure we publish the new target
+		
 		self.marker_timer.reset()
 
 		# Accept all goals. You can use this (in the future) to NOT accept a goal if you want
@@ -197,7 +215,16 @@ class Lab3Driver(Node):
 
   		# YOUR CODE HERE
 
-		return self.distance_to_target() < self.threshold
+		#return self.distance_to_target() < self.threshold
+
+		#self.start_timer.reset()
+		if self.distance_to_target() < self.threshold:
+			self.start_timer.cancel()
+			return True			
+		else:
+			#not using rn
+			#not completely sure if this is using the right args
+			return False
 
 	def distance_to_target(self):
 		""" Communicate with send points - set to distance to target"""
@@ -222,6 +249,9 @@ class Lab3Driver(Node):
 
 		# Reset target
 		self.set_target()
+
+		self.start_timer.cancel()
+		self.start_timer.reset()
 
 		# Keep publishing feedback, then sleeping (so the laser scan can happen)
 		# GUIDE: If you aren't making progress, stop the while loop and mark the goal as failed
@@ -375,11 +405,37 @@ class Lab3Driver(Node):
 			return True, closest_dist, closest_angle
 
 	def get_twist(self, scan):
+
 		"""This is the method that calculate the twist
 		@param scan - a LaserScan message with the current data from the LiDAR.  Use this for obstacle avoidance. 
 		    This is the same as your lab1 go and stop code
 		@return a twist command"""
+
+
 		t = self.zero_twist()
+
+		min_speed = 0.05
+		# max_speed = 0.2         # This moves about 0.01 m between scans
+		# max_turn = np.pi * 0.1  # This turns about 2 degrees between scans
+
+		max_speed = 0.2      # This moves about 0.01 m between scans
+		max_turn = np.pi * 0.1 # This turns about 2 degrees between scans
+
+		# if self.backup_count <= 0 :
+		# 	self.progress_count = (self.progress_count + 1) % self.progress_count_max
+
+		# 	if self.progress_count == 0 :
+		# 		if abs(self.prev_dist - self.distance_to_target()) < self.progress_threshold :
+		# 			self.backup_count = 20
+		# 		self.prev_dist = self.distance_to_target()
+		# else :
+		# 	t.twist.linear.x = -max_speed
+		# 	self.backup_count -= 1
+		# 	return t
+
+
+
+
 
 		# GUIDE:
 		#  Step 1) Calculate the angle the robot has to turn to in order to point at the target
@@ -391,25 +447,20 @@ class Lab3Driver(Node):
 		#  Note: If the target is behind you, might turn first before moving
 		#  Note: 0.4 is a good speed if nothing is in front of the robot
 
-		min_speed = 0.05
-		# max_speed = 0.2         # This moves about 0.01 m between scans
-		# max_turn = np.pi * 0.1  # This turns about 2 degrees between scans
 
-		max_speed = 0.2      # This moves about 0.01 m between scans
-		max_turn = np.pi * 0.1 # This turns about 2 degrees between scans
 
 		if self.target.point.x > 0 :
 			t.twist.linear.x = max(min_speed, min(self.target.point.x, max_speed))
 		else :
 			t.twist.linear.x = - min_speed
 
-		if self.target.point.y > 0.1 :
+		if self.target.point.y > 0 :
 			t.twist.angular.z = min(self.target.point.y, max_turn)
-			t.twist.linear.x = min_speed
+			t.twist.linear.x = max_speed
 
 		elif self.target.point.y < 0:
 			t.twist.angular.z = -min(-self.target.point.y, max_turn)
-			t.twist.linear.x = min_speed
+			t.twist.linear.x = max_speed
 
 
 		object_in_front, obstacle_dist, obstacle_angle = self.get_obstacle(scan)

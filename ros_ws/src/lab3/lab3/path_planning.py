@@ -201,16 +201,17 @@ def dijkstra(im, robot_loc=(0, 0), goal_loc=(0, 0)):
         #  See also lecture slides
         # YOUR CODE HERE
         for connected_point in four_connected(current_node[1]) :
-            if is_free(im, connected_point) :
-                connected_node = (current_node[0] + 1, connected_point) #make connected point into a node
+            if connected_point[0] < im.shape[1] and connected_point[1] < im.shape[0] and connected_point[0] >= 0 and connected_point[0] >= 0 :
+                if is_free(im, connected_point) :
+                    connected_node = (current_node[0] + 1, connected_point) #make connected point into a node
 
-                heapq.heappush(priority_queue, connected_node) #add the node to the heap
+                    heapq.heappush(priority_queue, connected_node) #add the node to the heap
 
-                if visited.get(connected_node[1]) == None :
-                    visited[connected_node[1]] = (connected_node[0], current_node, False)
-                else :
-                    if visited[connected_node[1]][0] > connected_node[0] :
-                        visited[connected_node[1]] = (connected_node[0], current_node, False) #replace the node with the shorter path if its shorter (maybe I shouldn't just keep it open?)
+                    if visited.get(connected_node[1]) == None :
+                        visited[connected_node[1]] = (connected_node[0], current_node, False)
+                    else :
+                        if visited[connected_node[1]][0] > connected_node[0] :
+                            visited[connected_node[1]] = (connected_node[0], current_node, False) #replace the node with the shorter path if its shorter (maybe I shouldn't just keep it open?)
     
     return_path = []
     if visited.get(goal_loc) != None :

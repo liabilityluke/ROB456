@@ -154,6 +154,7 @@ class SendPoints(Node):
 			# GUIDE: This is where you should flag if you want to bail on the current set of goals
 			# entirely or just skip to the next one
 			self.get_logger().info(f"Did not get to goal, skipping {self.next_goal_index}")
+			self.start_timer.reset()
 
 		self._send_goal_future = None
 		self._result_future = None
@@ -467,15 +468,11 @@ class SendPoints(Node):
 		# self.get_logger().info(f"test test!!!: {self.from_map_to_image(map_msg=map_msg, pt_xy=self.goal_points[-1])}")
 		if len(self.goal_points) > 0:		
 			goal_loc_in_image = self.from_map_to_image(map_msg=map_msg, pt_xy=self.goal_points[-1])
-			self.get_logger().info(f"thing 1")
 		else:
 			goal_loc_in_image = (map_msg.info.width // 2, map_msg.info.height // 2)
-			self.get_logger().info(f"thing 2")
 
 		if 0 < goal_loc_in_image[0] < map_msg.info.width and 0 < goal_loc_in_image[1] < map_msg.info.height:
 			# Headed towards last goal and it is now in the free space of the robot
-			self.get_logger().info(f"my points... {all_unseen_pts}")
-			self.get_logger().info(f"my robo position... {robot_current_loc_in_image}")
 			goal_loc_in_image = find_best_point(im_thresh, all_unseen_pts, robot_current_loc_in_image)  # Use your exploring code to find a good point
 			self.get_logger().info(f"Getting best {goal_loc_in_image}")# {is_free(im, goal_loc_in_image)}")
 		else:
@@ -487,19 +484,15 @@ class SendPoints(Node):
 					if 0 < try_goal_loc_in_image[0] < map_msg.info.width and 0 < try_goal_loc_in_image[1] < map_msg.info.height:
 						if is_free(im_thresh, try_goal_loc_in_image):
 							goal_loc_in_image = try_goal_loc_in_image
-							self.get_logger().info(f"This thing just happened...")
 
 		# GUIDE: This calls dijkstra with the goal location and plots the path that you return in RViz
 		#  Note: If you did not fix your code to deal with an unreachable point then this will handle that case
 		#   as an exception
 		path_pts = []
 		try:
-			self.get_logger().info(f"1!!!!, {im_thresh.shape}, {robot_current_loc_in_image}, {goal_loc_in_image}")
 			path = dijkstra(im_thresh, robot_current_loc_in_image, goal_loc_in_image)
-			self.get_logger().info("2!!!!")
-			self.get_logger().info(f"Path {path}")	
 			path_waypoints = find_waypoints(im_thresh, path)
-			self.get_logger().info(f"Path waypoints {path_waypoints}")	
+			#self.get_logger().info(f"Path waypoints {path_waypoints}")	
 			for p in path_waypoints:
 				map_xy = self.from_image_to_map(map_msg=map_msg, pt_uv=p)
 				path_pts.append(map_xy)
