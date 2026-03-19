@@ -94,21 +94,16 @@ def is_reachable(im, pix):
     @param im - the image
     @param pix - the pixel i,j"""
 
-    # GUIDE: Returns True (the pixel is adjacent to a pixel that is free)
-    #  False otherwise
-    # You can use four or eight connected - eight will return more points
-    # YOUR CODE HERE
-    # print(im.shape)
-
     
-
+    #for each of the four connected pixels, make sure they are not out of range, then see if they are free
+    #if any are free, it is considered reachable.
     for connected_pixel in path_planning.four_connected(pix) :
         if connected_pixel[0] < im.shape[1] and connected_pixel[1] < im.shape[0] and connected_pixel[0] >= 0 and connected_pixel[0] >= 0 :
             if path_planning.is_free(im, (connected_pixel[0], connected_pixel[1])) :
                 return True
     return False
 
-test_dict = {}
+
 def find_all_possible_goals(im):
     """ Find all of the places where you have a pixel that is unseen next to a pixel that is free
     It is probably easier to do this, THEN cull it down to some reasonable places to try
@@ -116,18 +111,18 @@ def find_all_possible_goals(im):
     @param im - thresholded image
     @return list of possible pixel (x,y) locations"""
 
-    # YOUR CODE HERE
 
+    #store any points that are both unseen and reachable in a dictionary
     possible_locations = {}
-
-    #easy win: use np functions to get just the unseen points
-
     for row in range(im.shape[0]) :
         for collumn in range(im.shape[1]) :
             if path_planning.is_unseen(im, (collumn, row)):
                 if is_reachable(im, (collumn, row)) :
                     possible_locations[(collumn, row)] = True
 
+    #for each point in the dictionary, check if it has any neighbor that is
+    #also in the dictionary. If so, put it in an array. This filters out any single
+    #lonely points
     possible_locations_array = []
 
     for location in possible_locations.keys() :
@@ -136,12 +131,8 @@ def find_all_possible_goals(im):
                 possible_locations_array.append(location)
                 break
 
-
     return possible_locations_array
                 
-
-
-
 
 def find_best_point(im, possible_points : list, robot_loc):
     """ Pick one of the unseen points to go to
@@ -149,11 +140,10 @@ def find_best_point(im, possible_points : list, robot_loc):
     @param possible_points - possible points to chose from (list of tuples)
     @param robot_loc - location of the robot (in case you want to factor that in)
     """
-    # YOUR CODE HERE
 
+    #choose the points that meet the criteria for a good point,
+    #aka, must be neighbors with at least 3 free spaces, and no walls.
     acceptable_points = []
-
-
     for pt in possible_points :
         count_free = 0
         count_unseen = 0
@@ -167,26 +157,25 @@ def find_best_point(im, possible_points : list, robot_loc):
         if count_free >= 3 and count_free + count_unseen == 9:
             acceptable_points.append(pt)
 
+    #get the closest acceptable point that is at least 60 spaces away,
+    #so that it doesn't just keep moving tiny distances
     closest_loc = (-1, -1)
     closest_dist = 100000000
-
     for location in acceptable_points :
         dist =  abs(robot_loc[0] - location[0]) + abs(robot_loc[1] - location[1])
         if 60 < dist < closest_dist :
             closest_dist = dist
             closest_loc = location
     
-
+    #take the best unseen point and get one of it's free neighbors to return so that we can pathplan to it.
     for ix in range(-1, 2):
         for iy in range(-1, 2):
             if path_planning.is_free(im, (closest_loc[0] + ix, closest_loc[1] + iy)):
                 return (closest_loc[0] + ix, closest_loc[1] + iy)
 
+    #this will run if the best point has no free neighbors, which hopefully never happens because we already checked that it does.
     print("hmmm something went wrong... returning unseen point")
-
     return (-3, -3)
-
-
 
 
 def find_waypoints(im, path):
@@ -195,15 +184,13 @@ def find_waypoints(im, path):
     @param path - the initial path
     @ return - a new path"""
 
-    # Again, no right answer here
-    # YOUR CODE HERE
-
+    #just choose every 20th point, unless that point lies within 10 of the last point,
     waypoints = []
-
     for i in range(1, len(path) - 10) :
         if i % 20 == 0 :
             waypoints.append(path[i])
     
+    #put in the last point no matter what
     waypoints.append(path[-1])
 
     return waypoints
@@ -251,9 +238,6 @@ if __name__ == '__main__':
     all_unseen = find_all_possible_goals(im_thresh)
     best_unseen = find_best_point(im_thresh, all_unseen, robot_loc=robot_start_loc)
 
-    # plot_with_explore_points(im_thresh, zoom=1.0, robot_loc=robot_start_loc, explore_points=all_unseen, best_pt=(0, 0))
-    # import matplotlib.pyplot as plt
-    # plt.show()
 
 
     assert test_unseen(im=im_thresh, pts=all_unseen)

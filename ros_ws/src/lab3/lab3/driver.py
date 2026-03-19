@@ -100,17 +100,10 @@ class Lab3Driver(Node):
 		self.target.point.x = 0.0
 		self.target.point.y = 0.0
 
-		# GUIDE: Declare any variables here
-  # YOUR CODE HERE
-		self.backup_count = 0
-		self.progress_threshold = 0.05
-		self.progress_count = 0
-		self.progress_count_max = 20
-		self.prev_dist = 1000
 
 		#initializing timer to time out if looking for point for too long
 		self.start_timer = self.create_timer(20.0, self.timer_timeout_callback)
-		#immediately canceling timer
+		#immediately canceling timer until we are ready for it
 		self.start_timer.cancel()
 
 
@@ -121,11 +114,13 @@ class Lab3Driver(Node):
 		self.print_twist_messages = False
 		self.print_distance_messages = False
 
+	#this function gets called when we want to give up on the point after the time runs out
 	def timer_timeout_callback(self):
+		#stop the timer from running again
 		self.start_timer.cancel()
+
+		#actually cancel the goal
 		self.goal = None
-		#if timer times out and haven't found the point
-		#send message to send points to cancel unfound point
 
 	def zero_twist(self):
 		"""This is a helper class method to create and zero-out a twist"""
@@ -215,15 +210,10 @@ class Lab3Driver(Node):
 
   		# YOUR CODE HERE
 
-		#return self.distance_to_target() < self.threshold
-
-		#self.start_timer.reset()
 		if self.distance_to_target() < self.threshold:
 			self.start_timer.cancel()
 			return True			
 		else:
-			#not using rn
-			#not completely sure if this is using the right args
 			return False
 
 	def distance_to_target(self):
@@ -250,13 +240,14 @@ class Lab3Driver(Node):
 		# Reset target
 		self.set_target()
 
-		self.start_timer.cancel()
+		#when starting on the next point, start the timer that tells us when to give up on it
 		self.start_timer.reset()
 
 		# Keep publishing feedback, then sleeping (so the laser scan can happen)
-		# GUIDE: If you aren't making progress, stop the while loop and mark the goal as failed
 		rate = self.create_rate(0.5)
 		while not self.close_enough():
+
+			#because we remove self.goal when we give up on a point, this will get triggered then.
 			if not self.goal:
 				self.get_logger().info(f"Goal was canceled")
 
@@ -326,9 +317,6 @@ class Lab3Driver(Node):
 				self.get_logger().info(f'No target to get distance to')
 			self.target = None		
 		
-		# GUIDE: Calculate any additional variables here
-		#  Remember that the target's location is in its own coordinate frame at 0,0, angle 0 (x-axis)
-  # YOUR CODE HERE
 
 		return self.target
 
@@ -350,7 +338,6 @@ class Lab3Driver(Node):
 			t = self.get_twist(scan)
 		else:
 			t = self.zero_twist()
-			#t.twist.linear.x = 0.1
 			if self.print_twist_messages:
 				self.get_logger().info(f"No goal, sitting still")
 
@@ -365,18 +352,17 @@ class Lab3Driver(Node):
 		if not self.target:
 			return False, 0.0, 0.0
 		
-		# GUIDE: Use this method to collect obstacle information - is something in front of, to the left, or to 
-		# the right of the robot? Start with your stopper code from Lab1
-  # YOUR CODE HERE
 
 		angle_min = scan.angle_min
 		angle_max = scan.angle_max
 		num_readings = len(scan.ranges)
 
+		#set up the angles that correspond to the readings
 		angles = np.linspace(angle_min, angle_max, num_readings)
 
 		width = 0.5
 
+		#put readings that are in front of robot in some lists
 		xs = np.zeros(num_readings)
 		ys = np.zeros(num_readings)
 		xs_in_front = []
@@ -388,17 +374,14 @@ class Lab3Driver(Node):
 				xs_in_front.append(xs[i])
 				ys_in_front.append(ys[i])
 		
-		
+		#get the closest distance, and the angle of the closest distance.
 		xs_in_front = np.array(xs_in_front)
 		ys_in_front = np.array(ys_in_front)
-
 		closest_dist = np.min(xs_in_front)
-
 		closest_index = np.asarray(xs == closest_dist).nonzero()[0][0]
-
-
 		closest_angle = angles[closest_index]
 
+		#only say the obstacle is too close if under 0.25m
 		if closest_dist > 0.25:
 			return False, closest_dist, closest_angle
 		else :
@@ -411,49 +394,20 @@ class Lab3Driver(Node):
 		    This is the same as your lab1 go and stop code
 		@return a twist command"""
 
-
 		t = self.zero_twist()
 
+		#set up speeds
 		min_speed = 0.05
-		# max_speed = 0.2         # This moves about 0.01 m between scans
-		# max_turn = np.pi * 0.1  # This turns about 2 degrees between scans
+		max_speed = 0.2
+		max_turn = np.pi * 0.1
 
-		max_speed = 0.2      # This moves about 0.01 m between scans
-		max_turn = np.pi * 0.1 # This turns about 2 degrees between scans
-
-		# if self.backup_count <= 0 :
-		# 	self.progress_count = (self.progress_count + 1) % self.progress_count_max
-
-		# 	if self.progress_count == 0 :
-		# 		if abs(self.prev_dist - self.distance_to_target()) < self.progress_threshold :
-		# 			self.backup_count = 20
-		# 		self.prev_dist = self.distance_to_target()
-		# else :
-		# 	t.twist.linear.x = -max_speed
-		# 	self.backup_count -= 1
-		# 	return t
-
-
-
-
-
-		# GUIDE:
-		#  Step 1) Calculate the angle the robot has to turn to in order to point at the target
-		#  Step 2) Set your speed based on how far away you are from the target, as before
-		#  Step 3) Add code that veers left (or right) to avoid an obstacle in front of it
-		# Reminder: t.linear.x = 0.1    sets the forward speed to 0.1
-		#           t.angular.z = pi/2   sets the angular speed to 90 degrees per sec
-		# Reminder 2: target is in self.target 
-		#  Note: If the target is behind you, might turn first before moving
-		#  Note: 0.4 is a good speed if nothing is in front of the robot
-
-
-
+		#if point is in fromt, go foreward!
 		if self.target.point.x > 0 :
 			t.twist.linear.x = max(min_speed, min(self.target.point.x, max_speed))
 		else :
 			t.twist.linear.x = - min_speed
 
+		#if goal is to the left/right, turn that way!
 		if self.target.point.y > 0 :
 			t.twist.angular.z = min(self.target.point.y, max_turn)
 			t.twist.linear.x = max_speed
@@ -462,9 +416,8 @@ class Lab3Driver(Node):
 			t.twist.angular.z = -min(-self.target.point.y, max_turn)
 			t.twist.linear.x = max_speed
 
-
+		#if object is in front, turn opposite the direction it is!
 		object_in_front, obstacle_dist, obstacle_angle = self.get_obstacle(scan)
-
 		if object_in_front :
 			t.twist.linear.x = 0.0
 			if obstacle_angle > 0 :
@@ -472,14 +425,6 @@ class Lab3Driver(Node):
 			else :
 				t.twist.angular.z = max_turn
 
-
-
-  # YOUR CODE HERE
-
-
-
-		# t.twist.linear.x = max_speed
-		# t.twist.angular.z = 0.0
 		if self.print_twist_messages:
 			self.get_logger().info(f"Setting twist forward {t.twist.linear.x} angle {t.twist.angular.z}")
 		return t
